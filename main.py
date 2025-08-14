@@ -54,7 +54,7 @@ class BotHandler:
             'printer': Device(
                 name="Принтер",
                 models={
-                    'chiteng': DeviceModel(name="Chiteng", numbers=["CT221B"])
+                    'chiteng': DeviceModel(name="Chiteng", numbers=["CT221B", "P2", "P0"])
                 },
                 common_questions={
                     "Инструкция": Solution(text="Инструкция на русском языке:", content_type="file")
