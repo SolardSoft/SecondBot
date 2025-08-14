@@ -1,4 +1,4 @@
-Базовый путь указан в self.content_base_path
+Базовый путь указан в token.env
 
-По умлочанию D:\programs\SolardBot
+CONTENT_BASE_PATH
 
