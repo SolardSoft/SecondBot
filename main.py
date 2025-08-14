@@ -4,8 +4,7 @@ from telegram import (
     InlineKeyboardMarkup,
     Update,
     ReplyKeyboardMarkup,
-    KeyboardButton,
-    InputFile
+    KeyboardButton
 )
 from telegram.ext import (
     Application,
@@ -20,6 +19,7 @@ from typing import Dict, List, Optional
 import os
 import re
 import logging
+import hashlib
 
 # Настройка логгирования
 logging.basicConfig(
@@ -49,7 +49,7 @@ class Device:
 
 class BotHandler:
     def __init__(self):
-        self.content_base_path = r"D:\programs\SecondBot"
+        self.content_base_path = os.getenv("CONTENT_BASE_PATH", "data")
         self.devices = {
             'printer': Device(
                 name="Принтер",
@@ -63,15 +63,12 @@ class BotHandler:
         }
         
         self.model_questions = {
-            'printer/chiteng/CT211B': {
+            'printer/chiteng/CT221B': {
                 "Установка драйвера": Solution(text="""
 Видеоруководство по установке: https://rutube.ru/video/61c6340d06ef3024f9720b8ae5fe75a9/
 
 Если возникли проблемы, пишите нашим специалистам: @TEXPRINTS                           
-"""),
-            },
-            'scanner/kefar/1': {
-                "Греется": Solution(text="Дайте устройству остыть")
+""")
             }
         }
         
@@ -91,6 +88,7 @@ class BotHandler:
 Хорошо. Теперь выберите модель устройства, она указана на коробке или маркетплейсе, где был приобретён товар.
 Следующим шагом нужно будет выбрать номер.
 
+Пример: модель - Chiteng, номер - CT221B
 """,
 
 #################
@@ -99,6 +97,7 @@ class BotHandler:
 
 Осталось выбрать номер устройства.
 
+Пример: модель - Chiteng, номер - CT221B
 """,
 
 #################
@@ -112,7 +111,7 @@ class BotHandler:
 
 #################
 
-            'other': """
+            'other': """           
 Пожалуйста, опишите вашу проблему нашему специалисту: @TEXPRINTS
 """,
 
@@ -123,12 +122,14 @@ class BotHandler:
 """
         }
 
-        # Reply-клавиатура с кнопкой /start
         self.reply_keyboard = ReplyKeyboardMarkup(
             [[KeyboardButton("/start")]],
             resize_keyboard=True,
             one_time_keyboard=False
         )
+
+        # Хранилище ID вопросов (временное)
+        self.question_map = {}
 
     def create_back_button(self, back_data: str) -> List[InlineKeyboardButton]:
         return [InlineKeyboardButton("« Назад", callback_data=back_data)]
@@ -161,44 +162,29 @@ class BotHandler:
         
         return path
 
+    def make_question_id(self, device_type, model, number, question_text):
+        q_hash = hashlib.md5(question_text.encode()).hexdigest()[:8]
+        q_id = f"{device_type}_{model}_{number}_{q_hash}"
+        self.question_map[q_id] = (device_type, model, number, question_text)
+        return q_id
+
     async def send_content(self, query, solution: Solution, device_type: str, model: str, number: str, question: str) -> None:
         content_path = self.get_content_path(device_type, model, number, question, solution.content_type)
-        
-        # Создаем клавиатуру с кнопкой "Назад"
         back_button = self.create_back_button(f"back_to_questions_{device_type}_{model}_{number}")
         reply_markup = InlineKeyboardMarkup([back_button])
 
         try:
             if not content_path:
-                await query.edit_message_text(
-                    text=solution.text,
-                    reply_markup=reply_markup
-                )
+                await query.edit_message_text(text=solution.text, reply_markup=reply_markup)
             elif solution.content_type == "image":
-                # Сначала отправляем изображение
                 with open(content_path, 'rb') as photo:
-                    await query.message.reply_photo(
-                        photo=photo,
-                        reply_markup=self.reply_keyboard
-                    )
-                # Затем отправляем текст с кнопкой "Назад"
-                await query.message.reply_text(
-                    text=solution.text,
-                    reply_markup=reply_markup
-                )
+                    await query.message.reply_photo(photo=photo, reply_markup=self.reply_keyboard)
+                await query.message.reply_text(text=solution.text, reply_markup=reply_markup)
                 await query.delete_message()
             elif solution.content_type == "file":
-                # Сначала отправляем файл
                 with open(content_path, 'rb') as file:
-                    await query.message.reply_document(
-                        document=file,
-                        reply_markup=self.reply_keyboard
-                    )
-                # Затем отправляем текст с кнопкой "Назад"
-                await query.message.reply_text(
-                    text=solution.text,
-                    reply_markup=reply_markup
-                )
+                    await query.message.reply_document(document=file, reply_markup=self.reply_keyboard)
+                await query.message.reply_text(text=solution.text, reply_markup=reply_markup)
                 await query.delete_message()
         except FileNotFoundError:
             await query.edit_message_text(
@@ -227,22 +213,15 @@ class BotHandler:
             reply_markup=InlineKeyboardMarkup(device_buttons)
         )
         
-        await update.message.reply_text(
-            text=" ",
-            reply_markup=self.reply_keyboard
-        )
+        await update.message.reply_text(" ", reply_markup=self.reply_keyboard)
 
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         query = update.callback_query
         await query.answer()
         data = query.data
-        
 
         if data == "other":
-            await query.edit_message_text(
-                text=self.messages['other'],
-                reply_markup=None
-            )
+            await query.edit_message_text(text=self.messages['other'], reply_markup=None)
         elif data.startswith("back_to_"):
             await self.handle_back(query, data)
         elif data.startswith("device_"):
@@ -257,11 +236,7 @@ class BotHandler:
         elif data.startswith("question_"):
             await self.process_question(query, data)
                 
-        await context.bot.send_message(
-            chat_id=query.message.chat_id,
-            text=" ",
-            reply_markup=self.reply_keyboard
-        )
+        await context.bot.send_message(chat_id=query.message.chat_id, text=" ", reply_markup=self.reply_keyboard)
 
     async def handle_back(self, query, data: str) -> None:
         back_type = data.split("_")[2]
@@ -284,11 +259,7 @@ class BotHandler:
                 InlineKeyboardButton("Другое", callback_data="other")
             ]
         ]
-        
-        await query.edit_message_text(
-            text=self.messages['start'],
-            reply_markup=InlineKeyboardMarkup(device_buttons)
-        )
+        await query.edit_message_text(text=self.messages['start'], reply_markup=InlineKeyboardMarkup(device_buttons))
 
     async def show_models(self, query, device_type: str) -> None:
         device = self.devices[device_type]
@@ -334,26 +305,24 @@ class BotHandler:
             **self.devices[device_type].common_questions
         }
         
-        # Получаем список всех вопросов
         question_list = list(questions.keys())
-        
-        # Группируем вопросы по 2 на строку
-        question_buttons = [
-            [
-                InlineKeyboardButton(q1[:64], callback_data=f"question_{device_type}_{model}_{number}_{q1}"),
-                InlineKeyboardButton(q2[:64], callback_data=f"question_{device_type}_{model}_{number}_{q2}")
-            ]
-            for q1, q2 in zip(question_list[::2], question_list[1::2])
-        ]
-        
-        # Если количество вопросов нечетное, добавляем последний вопрос отдельно
+        question_buttons = []
+
+        for q1, q2 in zip(question_list[::2], question_list[1::2]):
+            q1_id = self.make_question_id(device_type, model, number, q1)
+            q2_id = self.make_question_id(device_type, model, number, q2)
+            question_buttons.append([
+                InlineKeyboardButton(q1[:64], callback_data=f"question_{q1_id}"),
+                InlineKeyboardButton(q2[:64], callback_data=f"question_{q2_id}")
+            ])
+
         if len(question_list) % 2 != 0:
             last_question = question_list[-1]
+            last_id = self.make_question_id(device_type, model, number, last_question)
             question_buttons.append([
-                InlineKeyboardButton(last_question[:64], callback_data=f"question_{device_type}_{model}_{number}_{last_question}")
+                InlineKeyboardButton(last_question[:64], callback_data=f"question_{last_id}")
             ])
         
-        # Добавляем кнопку "Назад"
         question_buttons.append(self.create_back_button(f"back_to_numbers_{device_type}_{model}"))
         
         await query.edit_message_text(
@@ -362,22 +331,25 @@ class BotHandler:
         )
 
     async def process_question(self, query, callback_data: str) -> None:
-        _, device_type, model, number, question = callback_data.split("_", 4)
-        model_key = f"{device_type}/{model}/{number}"
-        
-        solution = (
-            self.model_questions.get(model_key, {}).get(question) or
-            self.devices[device_type].common_questions.get(question)
-        )
-        
-        if not solution:
-            await query.edit_message_text(
-                text="Решение не найдено",
-                reply_markup=self.reply_keyboard
-            )
+        _, q_id = callback_data.split("_", 1)
+
+        if q_id not in self.question_map:
+            await query.edit_message_text("Решение не найдено", reply_markup=self.reply_keyboard)
             return
-        
-        await self.send_content(query, solution, device_type, model, number, question)
+
+        device_type, model, number, question_text = self.question_map.pop(q_id)  # pop удаляет после использования
+        model_key = f"{device_type}/{model}/{number}"
+
+        solution = (
+            self.model_questions.get(model_key, {}).get(question_text) or
+            self.devices[device_type].common_questions.get(question_text)
+        )
+
+        if not solution:
+            await query.edit_message_text("Решение не найдено", reply_markup=self.reply_keyboard)
+            return
+
+        await self.send_content(query, solution, device_type, model, number, question_text)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.error(f"Ошибка: {context.error}")
