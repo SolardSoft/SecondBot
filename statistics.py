@@ -95,21 +95,34 @@ class StatisticsManager:
     def log_action(self, user_id: int, action_type: str, device_type: str = None, 
                    model: str = None, number: str = None, question: str = None):
         """Логирование действия пользователя"""
+        import pytz
+        from datetime import datetime
+        
+        # Получаем московское время
+        moscow_tz = pytz.timezone('Europe/Moscow')
+        moscow_time = datetime.now(moscow_tz)
+        
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO user_actions (user_id, action_type, device_type, model, number, question)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (user_id, action_type, device_type, model, number, question))
+            INSERT INTO user_actions (user_id, action_type, device_type, model, number, question, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, action_type, device_type, model, number, question, moscow_time.strftime('%Y-%m-%d %H:%M:%S')))
         
         conn.commit()
         conn.close()
     
     def get_daily_stats(self, date: str = None) -> Dict:
         """Получение статистики за день"""
+        import pytz
+        from datetime import datetime
+        
         if date is None:
-            date = datetime.now().strftime('%Y-%m-%d')
+            # Получаем московское время
+            moscow_tz = pytz.timezone('Europe/Moscow')
+            moscow_time = datetime.now(moscow_tz)
+            date = moscow_time.strftime('%Y-%m-%d')
         
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -128,7 +141,7 @@ class StatisticsManager:
         # Общее количество действий за день
         cursor.execute('''
             SELECT COUNT(*) FROM user_actions 
-            WHERE DATE(timestamp) = ?
+            WHERE strftime('%Y-%m-%d', timestamp) = ?
         ''', (date,))
         total_actions = cursor.fetchone()[0]
         
@@ -136,7 +149,7 @@ class StatisticsManager:
         cursor.execute('''
             SELECT number, COUNT(*) as count
             FROM user_actions
-            WHERE DATE(timestamp) = ? AND number IS NOT NULL
+            WHERE strftime('%Y-%m-%d', timestamp) = ? AND number IS NOT NULL
             GROUP BY number
             ORDER BY count DESC
         ''', (date,))
@@ -146,7 +159,7 @@ class StatisticsManager:
         cursor.execute('''
             SELECT question, COUNT(*) as count
             FROM user_actions 
-            WHERE DATE(timestamp) = ? AND question IS NOT NULL
+            WHERE strftime('%Y-%m-%d', timestamp) = ? AND question IS NOT NULL
             GROUP BY question
             ORDER BY count DESC
             LIMIT 10
@@ -158,7 +171,7 @@ class StatisticsManager:
             SELECT u.user_id, u.username, u.first_name, COUNT(ua.id) as action_count
             FROM users u
             JOIN user_actions ua ON u.user_id = ua.user_id
-            WHERE DATE(ua.timestamp) = ?
+            WHERE strftime('%Y-%m-%d', ua.timestamp) = ?
             GROUP BY u.user_id, u.username, u.first_name
             ORDER BY action_count DESC
             LIMIT 5
@@ -424,3 +437,4 @@ class StatisticsManager:
         
         logger.info(f"Очищено {deleted_actions} старых действий и {deleted_stats} записей статистики")
         return deleted_actions, deleted_stats
+

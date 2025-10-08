@@ -31,7 +31,7 @@ class StatsHandler:
     
     def format_stats_message(self, stats: Dict) -> str:
         """Форматирование сообщения со статистикой"""
-        message = f"📊 <b>Статистика SecondBot за {stats['date']}</b>\n\n"
+        message = f"📊 <b>Статистика Chieh за {stats['date']}</b>\n\n"
         
         # Общая статистика
         message += f"👥 <b>Пользователи:</b>\n"
@@ -110,7 +110,7 @@ class StatsHandler:
         #     return
         
         try:
-            # Получаем статистику за сегодня
+            # Получаем статистику за сегодня (включая текущие действия)
             logger.info("Получаем ежедневную статистику...")
             today_stats = self.stats_manager.get_daily_stats()
             logger.info(f"Ежедневная статистика: {today_stats}")
@@ -216,7 +216,7 @@ class StatsHandler:
             weekly_stats = self.stats_manager.get_weekly_stats()
             
             # Форматируем сообщение
-            message = f"📊 <b>Статистика SecondBot за неделю</b>\n\n"
+            message = f"📊 <b>Статистика Chieh за неделю</b>\n\n"
             message += f"👥 <b>Пользователи:</b>\n"
             message += f"• Уникальных пользователей: {weekly_stats['unique_users']}\n"
             message += f"• Всего действий: {weekly_stats['total_actions']}\n\n"
@@ -270,7 +270,7 @@ class StatsHandler:
             monthly_stats = self.stats_manager.get_monthly_stats()
             
             # Форматируем сообщение
-            message = f"📊 <b>Статистика SecondBot за месяц</b>\n\n"
+            message = f"📊 <b>Статистика Chieh за месяц</b>\n\n"
             message += f"👥 <b>Пользователи:</b>\n"
             message += f"• Уникальных пользователей: {monthly_stats['unique_users']}\n"
             message += f"• Всего действий: {monthly_stats['total_actions']}\n\n"
