@@ -11,13 +11,8 @@ from telegram.ext import ContextTypes
 
 from statistics import StatisticsManager
 
-# Импортируем константы из main.py
-try:
-    from main import ADMIN_CHAT_ID, ADMIN_IDS
-except ImportError:
-    # Если импорт не удался, используем значения по умолчанию
-    ADMIN_CHAT_ID = "-4742593122"
-    ADMIN_IDS = [550680968]
+ADMIN_CHAT_ID = "-4742593122"
+ADMIN_IDS = [550680968]
 
 logger = logging.getLogger(__name__)
 
