@@ -11,8 +11,8 @@ from telegram.ext import ContextTypes
 
 from statistics import StatisticsManager
 
-ADMIN_CHAT_ID = "-4742593122"
-ADMIN_IDS = [550680968]
+ADMIN_CHAT_ID = "-1003131568927"
+ADMIN_IDS = [550680968, 332518486, 7068694127, 1118098514]
 
 logger = logging.getLogger(__name__)
 
