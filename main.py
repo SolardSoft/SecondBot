@@ -73,7 +73,7 @@ class BotHandler:
                     'detonger': DeviceModel(name="Detonger", numbers=["P2", "P0"])
                 },
                 common_questions={
-                    "Инструкция": Solution(text="Инструкция на русском языке:", content_type="file"),
+                    "Инструкция": Solution(text="Инструкция на русском языке:", content_type="file")
                 }
             )
         }
@@ -84,12 +84,14 @@ class BotHandler:
 Видеоруководство по установке: https://rutube.ru/video/61c6340d06ef3024f9720b8ae5fe75a9/
 
 Если возникли проблемы, пишите нашим специалистам: @TEXPRINTS                           
-""")},
+"""),
+                "Расширенное руководство": Solution(text="Яндекс Диск со всеми инструкциями: https://disk.yandex.ru/d/h1M9eQRptT14cw")
+            },
             'printer/detonger/P0': {
-                "Использование на ПК": Solution(text="Для использования принтера на ПК не требуются драйвера, достаточно подключить его через Bluetooth/USB и использовать любое ПО для печати этикеток, например Nicelabel или Bartender. По уточняющим вопросам пишите нашим специалистам: @TEXPRINTS")
+                "Подключение и драйвер": Solution(text="Инструкция на русском языке:", content_type="file")
             },
             'printer/detonger/P2': {
-                "Использование на ПК": Solution(text="Для использования принтера на ПК не требуются драйвера, достаточно подключить его через Bluetooth/USB и использовать любое ПО для печати этикеток, например Nicelabel или Bartender. По уточняющим вопросам пишите нашим специалистам: @TEXPRINTS")
+                "Подключение и драйвер": Solution(text="Инструкция на русском языке:", content_type="file")
             }
         }
         
